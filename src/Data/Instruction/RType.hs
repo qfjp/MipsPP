@@ -2,8 +2,11 @@ module Data.Instruction.RType where
 
 import           Padelude                hiding (show, try)
 
+import           Data.List.NonEmpty      (fromList)
 import           Data.Text               (pack, toLower)
 import           Text.Show               (show)
+
+import           Data.Either.Extra       (fromRight')
 
 import           Text.Parser.Char        (CharParsing)
 import           Text.Parser.Combinators (choice, try)
@@ -47,33 +50,63 @@ rtypeParse :: (TokenParsing m, Monad m) => RText -> m RText
 rtypeParse i = rtypeText i [pack . show $ i]
 
 rtype :: (TokenParsing m, Monad m) => m RInstr
-rtype = choice . map (try $) $
-    -- foldl :: (b -> Reg -> b) -> b -> [Reg] -> b
-    -- foldlM :: (b -> Reg -> (Reg -> b)) -> b -> [Reg] -> (Reg -> b)
-  [ rtypeParse (RT3 Add)   >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  Add  r1 r2 r3)))
-  , rtypeParse (RT3 Addu)  >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  Addu r1 r2 r3)))
-  , rtypeParse (RT3 And)   >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  And  r1 r2 r3)))
-  , rtypeParse (RT3 Or)    >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  Or   r1 r2 r3)))
-  , rtypeParse (RT3 Sllv)  >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  Sllv r1 r2 r3)))
-  , rtypeParse (RT3 Slt)   >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  Slt  r1 r2 r3)))
-  , rtypeParse (RT3 Sltu)  >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  Sltu r1 r2 r3)))
-  , rtypeParse (RT3 Srlv)  >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  Srlv r1 r2 r3)))
-  , rtypeParse (RT3 Sub)   >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  Sub  r1 r2 r3)))
-  , rtypeParse (RT3 Subu)  >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  Subu r1 r2 r3)))
-  , rtypeParse (RT3 Xor)   >> (parseRegsN 3 >>= (\[r1, r2, r3] -> return (RI3  Xor  r1 r2 r3)))
+rtype = choice . map ((try $) . makeRtype) $
+  [ RT3 Add
+  , RT3 Addu
+  , RT3 And
+  , RT3 Or
+  , RT3 Sllv
+  , RT3 Slt
+  , RT3 Sltu
+  , RT3 Srlv
+  , RT3 Sub
+  , RT3 Subu
+  , RT3 Xor
 
-  , rtypeParse (RT2 Div)   >> (parseRegsN 2 >>= (\[r1, r2] -> return (RI2 Div   r1 r2)))
-  , rtypeParse (RT2 Divu)  >> (parseRegsN 2 >>= (\[r1, r2] -> return (RI2 Divu  r1 r2)))
-  , rtypeParse (RT2 Mult)  >> (parseRegsN 2 >>= (\[r1, r2] -> return (RI2 Mult  r1 r2)))
-  , rtypeParse (RT2 Multu) >> (parseRegsN 2 >>= (\[r1, r2] -> return (RI2 Multu r1 r2)))
+  , RT2 Div
+  , RT2 Divu
+  , RT2 Mult
+  , RT2 Multu
 
-  , rtypeParse (RT1 Mfhi)  >> (parseRegsN 1 >>= (\[r1] -> return (RI1 Mfhi r1)))
-  , rtypeParse (RT1 Mflo)  >> (parseRegsN 1 >>= (\[r1] -> return (RI1 Mflo r1)))
+  , RT1 Mfhi
+  , RT1 Mflo
   ]
+
+makeRtype :: (TokenParsing m, Monad m) => RText -> m RInstr
+makeRtype i@(RT3 _) = makeRtypeN 3 i
+makeRtype i@(RT2 _) = makeRtypeN 2 i
+makeRtype i@(RT1 _) = makeRtypeN 1 i
+
+makeRtypeN :: (TokenParsing m, Monad m) => Int -> RText -> m RInstr
+makeRtypeN n i =
+    rtypeParse i >> parseRegsN n >>= (return . regsToRInstr i . fromList)
+
+-- [1, 2, 3] => f $ 1 $ 2 $ 3
+type PAPFunc f a result = Either (f, [a]) result
+
+liftPartial f xs = Left (f,xs)
+
+apply (Left (f,xs)) ys = Left (f,xs++ys)
+apply p _              = p
+
+--simp2 :: PAPFunc (a->a->b) a b -> PAPFunc (a->a->b) a b
+simp2 :: PAPFunc (a -> a -> b) a b -> PAPFunc (a -> a -> b) a b
+simp2 (Left (f,(x1:x2:xs))) = Right (f x1 x2)
+simp2 p                     = p
+
+unsafeUnwrap :: PAPFunc (a -> a -> b) a b -> b
+unsafeUnwrap = fromRight'
+
+regsToRInstr :: RText -> NonEmpty Reg -> RInstr
+regsToRInstr (RT3 i) (r:|rs) =
+    unsafeUnwrap . simp2 $ liftPartial (RI3 i r) rs
+regsToRInstr (RT2 i) (r:|rs) =
+    unsafeUnwrap . simp2 $ liftPartial (RI2 i) (r:rs)
+regsToRInstr (RT1 i) (r:|[]) =
+    unsafeUnwrap . simp2 $ liftPartial (const $ RI1 i) [r, undefined]
 
 parseRegsN :: (TokenParsing m, Monad m) => Int -> m [Reg]
 parseRegsN n =
-    -- foldl :: (m [Reg] -> m Reg -> m [Reg]) -> m [Reg] -> [m Reg] -> m [Reg]
     foldl cons' (return []) (replicate n register)
   where
       cons' bs b = do

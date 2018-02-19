@@ -48,3 +48,8 @@ main :: IO ()
 main = do
   result <- return $ parseString rtype mempty "addu $s3 $s4 $t0"
   print result
+  let j = liftPartial (RI2 Div) []
+      m = apply j [Zero]
+      n = apply m [AT, SP, Zero]
+  print $ either (const "unfinished" :: a -> Text) show $ simp2 m
+  print $ either (const "unfinished" :: a -> Text) show $ simp2 n
