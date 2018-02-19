@@ -1,0 +1,62 @@
+name:                MipsPP
+version:             0.1.0.0
+synopsis:            A Pretty Printer (or Preprocessor) for MIPS
+--description:         A larger description
+homepage:            https://github.com/qfjp/MipsPP
+license:             GPL-3
+license-file:        COPYING
+author:              Daniel Pade
+maintainer:          djpade@gmail.com
+copyright:           2017 Daniel Pade
+category:            Parser
+build-type:          Simple
+cabal-version:       >=1.10
+tested-with:
+  GHC == 7.6.1,
+  GHC == 7.6.2,
+  GHC == 7.6.3,
+  GHC == 7.8.1,
+  GHC == 7.8.2,
+  GHC == 7.8.3,
+  GHC == 7.8.4,
+  GHC == 7.10.1,
+  GHC == 7.10.2,
+  GHC == 7.10.3,
+  GHC == 8.0.1,
+  GHC == 8.2.1
+Bug-Reports:         https://github.com/qfjp/template/issues
+
+description:
+  A larger description
+  type: git
+  location: git@github.com:qfjp/template
+
+executable mipp
+  main-is:             Main.hs
+  hs-source-dirs:      main
+  default-extensions:  NoImplicitPrelude
+                       OverloadedStrings
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , MipsPP
+                     , padelude >= 0.1.0.0 && < 0.2
+                     , parsers >= 0.12 && < 2.0
+                     , text >= 1.0 && < 2.0
+                     , trifecta >= 1.0 && < 2.0
+
+library
+  exposed-modules:     Data.Register
+                     , Data.Instruction
+                     , Data.Instruction.RType
+                     , Parser.Utils
+  other-modules:
+  default-extensions:  NoImplicitPrelude
+                       OverloadedStrings
+  ghc-options:         -Wall -fwarn-implicit-prelude
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , padelude >= 0.1.0.0 && < 0.2
+                     , parsers >= 0.12 && < 2.0
+                     , text >= 1.0 && < 2.0
+                     , trifecta >= 1.0 && < 2.0
