@@ -16,7 +16,12 @@ import           Data.Instruction
 import           Parser.Utils
 
 type MipsProg = [Line]
-type Line = (Maybe Instr, Maybe Text)
+
+data Line = InstrComment (Maybe Instr, Maybe Text)
+          | Label Text
+          | Directive Text
+          | DataDecl Text
+        deriving (Show, Eq, Ord)
 
 mipsProg :: (TokenParsing m, Monad m) => m MipsProg
 mipsProg = do
@@ -26,26 +31,60 @@ mipsProg = do
 
 line :: (TokenParsing m, Monad m) => m Line
 line = plusWhiteSpaceNoEnd $ do
-    result <- option (Nothing, Nothing) $ choice [try instrThenComment, liftInstr, liftCommt]
+    result <- option (InstrComment (Nothing, Nothing)) $
+        choice [ try instrThenComment
+               , liftInstr
+               , liftCommt
+               , liftDir
+               , try liftDataDecl
+               , liftLabel
+               ]
     void newline
     return result
+
+dataDeclaration :: (TokenParsing m, Monad m) => m Text
+dataDeclaration = do
+    lab <- label
+    void $ char ':'
+    void $ whiteSpaceNoEnd
+    dir <- directive
+    return (lab ++ ": " ++ dir)
+
+liftDataDecl :: (TokenParsing m, Monad m) => m Line
+liftDataDecl = dataDeclaration >>= return . DataDecl
 
 instrThenComment :: (TokenParsing m, Monad m) => m Line
 instrThenComment = do
     instr <- instruction
     void $ optional whiteSpaceNoEnd
     commt <- comment
-    return (Just instr, Just commt)
+    return $ InstrComment (Just instr, Just commt)
 
 liftInstr :: (TokenParsing m, Monad m) => m Line
 liftInstr = do
-    instr <- instruction
-    return (Just instr, Nothing)
+    instruction >>= return . InstrComment . (flip (,)) Nothing . Just
 
 liftCommt :: (TokenParsing m, Monad m) => m Line
 liftCommt = do
-    commt <- comment <|> (label >>= \x -> char ':' >> return x)
-    return (Nothing, Just commt)
+    commt <- comment
+    return $ InstrComment (Nothing, Just commt)
+
+liftDir :: (TokenParsing m, Monad m) => m Line
+liftDir = do
+    dir <- directive
+    return $ Directive dir
+
+liftLabel :: (TokenParsing m, Monad m) => m Line
+liftLabel = do
+    lab <- label
+    void $ char ':'
+    return $ Label lab
+
+directive :: (TokenParsing m, Monad m) => m Text
+directive = plusWhiteSpaceNoEnd $ do
+    void $ char '.'
+    str <- many $ noneOf endls
+    return . pack $ str
 
 comment :: (TokenParsing m, Monad m) => m Text
 comment = do
