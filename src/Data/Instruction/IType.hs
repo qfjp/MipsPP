@@ -1,12 +1,14 @@
 module Data.Instruction.IType where
 
-import           Padelude                hiding (show, try)
+import           Padelude                hiding (try)
 
-import           Text.Show               (show)
+import           Data.Text               (toLower)
+import qualified Text.Show               as T (show)
 
 import           Text.Parser.Combinators (choice, count)
 import           Text.Parser.Token       (TokenParsing)
 
+import           Control.PPrint
 import           Data.Register
 import           Parser.Utils
 
@@ -14,6 +16,17 @@ data IInstr =
     II3 IText3 Imm Reg Reg
   | II2 IText2 Imm Reg
   deriving (Show, Eq, Ord)
+
+instance PPrint IInstr where
+    pprint (II3 instr im r1 r2) =
+        pprint instr ++ " " ++
+        pprint r1 ++ ", " ++
+        pprint r2 ++ ", " ++
+        pprint im
+    pprint (II2 instr im r1) =
+        pprint instr ++ " " ++
+        pprint r1 ++ ", " ++
+        pprint im
 
 data IText3 =
     Addi | Addiu | Andi | Ori | Sll | Slti | Sltiu | Sra | Srl | Xori
@@ -27,9 +40,14 @@ data IText =
     IT3 IText3 | IT2 IText2
   deriving (Eq, Ord)
 
+instance PPrint IText3 where
+    pprint = toLower . show
+instance PPrint IText2 where
+    pprint = toLower . show
+
 instance Show IText where
-    show (IT3 r) = show r
-    show (IT2 r) = show r
+    show (IT3 r) = T.show r
+    show (IT2 r) = T.show r
 
 itype :: (TokenParsing m, Monad m) => m IInstr
 itype = choice . map makeItype $

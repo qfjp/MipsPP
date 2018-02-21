@@ -1,10 +1,13 @@
+{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE TypeFamilies    #-}
 -- TODO:
 --  * change option (Nothing, Nothing) ... to something more robust.
 --    As of now, we ignore any line that isnt something in the choice
 --    list
 module Data.MipsProg where
 
-import           Padelude                hiding (option, try)
+import           GHC.Exts                (IsList (..))
+import           Padelude                hiding (option, toList, try)
 
 import           Data.Text               (pack)
 
@@ -15,23 +18,47 @@ import           Text.Parser.Token       (TokenParsing, symbolic)
 import           Data.Instruction
 import           Parser.Utils
 
-type MipsProg = [Line]
+import           Control.PPrint
 
-data Line = InstrComment (Maybe Instr, Maybe Text)
+data MipsProg = Empty | Lines Line MipsProg
+
+instance IsList MipsProg where
+    type Item MipsProg = Line
+    fromList xs = foldr Lines Empty xs
+    toList (Lines x y) = x:(toList y)
+    toList Empty       = []
+
+instance PPrint MipsProg where
+    pprint (Lines l ls) = pprint l ++ "\n" ++ pprint ls
+    pprint Empty        = ""
+
+data Line = Instruction Instr
+          | Comment Text
+          | InstrComment Instr Text
           | Label Text
           | Directive Text
           | DataDecl Text
+          | NoLine
         deriving (Show, Eq, Ord)
+
+instance PPrint Line where
+    pprint (Instruction x)    = pprint x
+    pprint (Comment x)        = "# " ++ x
+    pprint (InstrComment x y) = pprint x ++ "  # " ++ y
+    pprint (Label x)          = x ++ ":"
+    pprint (Directive x)      = "." ++ x
+    pprint (DataDecl x)       = "." ++ x
+    pprint (NoLine)           = ""
 
 mipsProg :: (TokenParsing m, Monad m) => m MipsProg
 mipsProg = do
     lines <- many line
     eof
-    return lines
+    return . fromList $ lines
 
 line :: (TokenParsing m, Monad m) => m Line
 line = plusWhiteSpaceNoEnd $ do
-    result <- option (InstrComment (Nothing, Nothing)) $
+    result <- option (NoLine) $
         choice [ try instrThenComment
                , liftInstr
                , liftCommt
@@ -58,21 +85,16 @@ instrThenComment = do
     instr <- instruction
     void $ optional whiteSpaceNoEnd
     commt <- comment
-    return $ InstrComment (Just instr, Just commt)
+    return $ InstrComment instr commt
 
 liftInstr :: (TokenParsing m, Monad m) => m Line
-liftInstr = do
-    instruction >>= return . InstrComment . (flip (,)) Nothing . Just
+liftInstr = instruction >>= return . Instruction
 
 liftCommt :: (TokenParsing m, Monad m) => m Line
-liftCommt = do
-    commt <- comment
-    return $ InstrComment (Nothing, Just commt)
+liftCommt = comment >>= return . Comment
 
 liftDir :: (TokenParsing m, Monad m) => m Line
-liftDir = do
-    dir <- directive
-    return $ Directive dir
+liftDir = directive >>= return . Directive
 
 liftLabel :: (TokenParsing m, Monad m) => m Line
 liftLabel = do

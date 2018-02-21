@@ -45,7 +45,8 @@ executable mipp
                      , trifecta >= 1.0 && < 2.0
 
 library
-  exposed-modules:     Data.Instruction
+  exposed-modules:     Control.PPrint
+                     , Data.Instruction
                      , Data.Instruction.IType
                      , Data.Instruction.JType
                      , Data.Instruction.MType

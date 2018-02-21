@@ -1,12 +1,14 @@
 module Data.Instruction.RType where
 
-import           Padelude                hiding (show, try)
+import           Padelude                hiding (try)
 
-import           Text.Show               (show)
+import           Data.Text               (toLower)
+import qualified Text.Show               as T (show)
 
 import           Text.Parser.Combinators (choice, count)
 import           Text.Parser.Token       (TokenParsing)
 
+import           Control.PPrint
 import           Data.Register
 import           Parser.Utils
 
@@ -16,14 +18,28 @@ data RInstr =
   | RI1 RText1 Reg
   deriving (Show, Eq, Ord)
 
+instance PPrint RInstr where
+    pprint (RI3 instr r1 r2 r3) =
+        pprint instr ++ " " ++
+        pprint r1 ++ ", " ++
+        pprint r2 ++ ", " ++
+        pprint r3
+    pprint (RI2 instr r1 r2) =
+        pprint instr ++ " " ++
+        pprint r1 ++ ", " ++
+        pprint r2
+    pprint (RI1 instr r1) =
+        pprint instr ++ " " ++
+        pprint r1
+
 data RText =
     RT3 RText3 | RT2 RText2 | RT1 RText1
   deriving (Eq, Ord)
 
 instance Show RText where
-    show (RT3 r) = show r
-    show (RT2 r) = show r
-    show (RT1 r) = show r
+    show (RT3 r) = T.show r
+    show (RT2 r) = T.show r
+    show (RT1 r) = T.show r
 
 data RText3 =
     Add | Addu | And | Or | Sllv | Slt | Sltu | Srlv | Sub | Subu | Xor
@@ -36,6 +52,13 @@ data RText2 =
 data RText1 =
     Mfhi | Mflo
   deriving (Show, Eq, Ord, Enum)
+
+instance PPrint RText3 where
+    pprint = toLower . show
+instance PPrint RText2 where
+    pprint = toLower . show
+instance PPrint RText1 where
+    pprint = toLower . show
 
 rtype :: (TokenParsing m, Monad m) => m RInstr
 rtype = choice . map makeRtype $

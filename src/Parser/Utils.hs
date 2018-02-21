@@ -1,17 +1,23 @@
 module Parser.Utils where
 
-import           Data.Char               (Char, isSpace, toLower, toUpper)
 import           Padelude                hiding (show, try)
 import           Prelude                 (String, show)
 
+import           Data.Char               (Char, isSpace, toLower, toUpper)
 import           Data.Text               (cons, pack, unpack)
 
 import           Text.Parser.Char        (CharParsing, char, newline, satisfy)
 import           Text.Parser.Combinators (choice, eof, skipSome, try, (<?>))
 import           Text.Parser.Token       (TokenParsing, hexadecimal, integer')
 
+import           Control.PPrint
+
 data Imm = ILabel Text | IConst Integer
   deriving (Show, Eq, Ord)
+
+instance PPrint Imm where
+    pprint (ILabel t) = t
+    pprint (IConst i) = pack . show $ i
 
 plusWhiteSpaceNoEnd :: (Monad m, TokenParsing m)  => m a -> m a
 plusWhiteSpaceNoEnd p = do

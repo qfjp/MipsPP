@@ -1,12 +1,14 @@
 module Data.Instruction.JType where
 
-import           Padelude                hiding (show, try)
+import           Padelude                hiding (try)
 
-import           Text.Show               (show)
+import           Data.Text               (toLower)
+import qualified Text.Show               as T (show)
 
 import           Text.Parser.Combinators (choice, count)
 import           Text.Parser.Token       (TokenParsing)
 
+import           Control.PPrint
 import           Data.Register
 import           Parser.Utils
 
@@ -16,6 +18,23 @@ data JInstr =
    | JI1 JText1 Text
    | JIR JTextR Reg
    deriving (Show, Eq, Ord)
+
+instance PPrint JInstr where
+    pprint (JI3 instr lab r1 r2) =
+        pprint instr ++ " " ++
+        pprint r1 ++ ", " ++
+        pprint r2 ++ ", " ++
+        lab
+    pprint (JI2 instr lab r1) =
+        pprint instr ++ " " ++
+        pprint r1 ++ ", " ++
+        lab
+    pprint (JI1 instr lab) =
+        pprint instr ++ " " ++
+        lab
+    pprint (JIR instr r1) =
+        pprint instr ++ " " ++
+        pprint r1
 
 data JText =
      JT3 JText3
@@ -39,11 +58,20 @@ data JText1 =
 data JTextR = Jr
   deriving (Show, Eq, Ord, Enum)
 
+instance PPrint JText3 where
+    pprint = toLower . show
+instance PPrint JText2 where
+    pprint = toLower . show
+instance PPrint JText1 where
+    pprint = toLower . show
+instance PPrint JTextR where
+    pprint = toLower . show
+
 instance Show JText where
-    show (JT3 r) = show r
-    show (JT2 r) = show r
-    show (JT1 r) = show r
-    show (JTR r) = show r
+    show (JT3 r) = T.show r
+    show (JT2 r) = T.show r
+    show (JT1 r) = T.show r
+    show (JTR r) = T.show r
 
 jtype :: (TokenParsing m, Monad m) => m JInstr
 jtype = choice . map makeJtype $

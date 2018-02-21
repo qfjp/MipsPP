@@ -5,6 +5,7 @@ import           Padelude
 import           Text.Parser.Combinators (choice)
 import           Text.Parser.Token       (TokenParsing)
 
+import           Control.PPrint
 import           Data.Instruction.IType
 import           Data.Instruction.JType
 import           Data.Instruction.MType
@@ -19,6 +20,14 @@ data Instr =
   | Noop
   | Syscall
   deriving (Show, Eq, Ord)
+
+instance PPrint Instr where
+    pprint (II x)  = pprint x
+    pprint (JI x)  = pprint x
+    pprint (MI x)  = pprint x
+    pprint (RI x)  = pprint x
+    pprint Noop    = "noop"
+    pprint Syscall = "syscall"
 
 instruction :: (TokenParsing m, Monad m) => m Instr
 instruction = do

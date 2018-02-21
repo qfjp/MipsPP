@@ -1,20 +1,32 @@
 module Data.Instruction.MType where
 
-import           Padelude                hiding (show, try)
+import           Padelude                hiding (try)
 
+import           Data.Text               (toLower)
 import           Text.Parser.Char        (char)
 import           Text.Parser.Combinators (choice)
 import           Text.Parser.Token       (TokenParsing)
 
+import           Control.PPrint
 import           Data.Register
 import           Parser.Utils
 
 data MInstr = MI3 MText Imm Reg Reg
   deriving (Show, Eq, Ord)
 
+instance PPrint MInstr where
+    pprint (MI3 instr imm r1 r2) =
+        pprint instr ++ " " ++
+        pprint r1 ++ ", " ++
+        pprint imm ++ "(" ++
+        pprint r2 ++ ")"
+
 data MText =
     Lw | Sw | Lb | Sb
   deriving (Show, Eq, Ord, Enum)
+
+instance PPrint MText where
+    pprint = toLower . show
 
 mtype :: (TokenParsing m, Monad m) => m MInstr
 mtype = choice . map (makeMtype parseArgs) $

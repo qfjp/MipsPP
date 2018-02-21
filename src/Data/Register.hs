@@ -1,9 +1,13 @@
 module Data.Register where
 
-import           Padelude                hiding (K1, try)
+import           Padelude                hiding (K1, show, try)
+import           Prelude                 (show)
+
+import           Data.Text               (pack, toLower)
+
+import           Control.PPrint
 import           Parser.Utils            (parseDataAsStrings,
                                           plusWhiteSpaceNoEnd, text', (<<))
-import           Prelude                 (show)
 import           Text.Parser.Char        (char)
 import           Text.Parser.Combinators (choice, try)
 import           Text.Parser.Token       (TokenParsing)
@@ -55,6 +59,9 @@ instance Show Reg where
 
     show K0   = "$26"
     show K1   = "$27"
+
+instance PPrint Reg where
+    pprint = toLower . pack . show
 
 
 regParse :: (TokenParsing m, Monad m) => Reg -> m Reg
