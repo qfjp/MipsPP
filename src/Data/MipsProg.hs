@@ -47,7 +47,7 @@ instance PPrint Line where
     pprint (InstrComment x y) = pprint x ++ "  # " ++ y
     pprint (Label x)          = x ++ ":"
     pprint (Directive x)      = "." ++ x
-    pprint (DataDecl x)       = "." ++ x
+    pprint (DataDecl x)       = x
     pprint (NoLine)           = ""
 
 mipsProg :: (TokenParsing m, Monad m) => m MipsProg
@@ -75,7 +75,7 @@ dataDeclaration = do
     void $ char ':'
     void $ whiteSpaceNoEnd
     dir <- directive
-    return (lab ++ ": " ++ dir)
+    return (lab ++ ": ." ++ dir)
 
 liftDataDecl :: (TokenParsing m, Monad m) => m Line
 liftDataDecl = dataDeclaration >>= return . DataDecl
