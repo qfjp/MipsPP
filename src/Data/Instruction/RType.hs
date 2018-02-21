@@ -2,16 +2,10 @@ module Data.Instruction.RType where
 
 import           Padelude                hiding (show, try)
 
-import           Data.List.NonEmpty      (fromList)
-import           Data.Text               (pack, toLower)
 import           Text.Show               (show)
 
-import           Data.Either.Extra       (fromRight')
-
-import           Text.Parser.Char        (CharParsing)
-import           Text.Parser.Combinators (choice, try)
+import           Text.Parser.Combinators (choice, count)
 import           Text.Parser.Token       (TokenParsing)
-import           Text.Trifecta.Parser    (Parser)
 
 import           Data.Register
 import           Parser.Utils
@@ -43,73 +37,52 @@ data RText1 =
     Mfhi | Mflo
   deriving (Show, Eq, Ord, Enum)
 
-rtypeText :: (TokenParsing m, Monad m) => RText -> [Text] -> m RText
-rtypeText r xs = plusWhiteSpace ((choice . map text') xs) >> return r
-
-rtypeParse :: (TokenParsing m, Monad m) => RText -> m RText
-rtypeParse i = rtypeText i [pack . show $ i]
-
 rtype :: (TokenParsing m, Monad m) => m RInstr
-rtype = choice . map ((try $) . makeRtype) $
-  [ RT3 Add
-  , RT3 Addu
+rtype = choice . map makeRtype $
+  [ RT3 Addu
+  , RT3 Add
   , RT3 And
   , RT3 Or
   , RT3 Sllv
-  , RT3 Slt
   , RT3 Sltu
+  , RT3 Slt
   , RT3 Srlv
-  , RT3 Sub
   , RT3 Subu
+  , RT3 Sub
   , RT3 Xor
 
-  , RT2 Div
   , RT2 Divu
-  , RT2 Mult
+  , RT2 Div
   , RT2 Multu
+  , RT2 Mult
 
   , RT1 Mfhi
   , RT1 Mflo
   ]
 
 makeRtype :: (TokenParsing m, Monad m) => RText -> m RInstr
-makeRtype i@(RT3 _) = makeRtypeN 3 i
-makeRtype i@(RT2 _) = makeRtypeN 2 i
-makeRtype i@(RT1 _) = makeRtypeN 1 i
+makeRtype i@(RT3 _) = makeRtypeN (parseArgsN 3) i
+makeRtype i@(RT2 _) = makeRtypeN (parseArgsN 2) i
+makeRtype i@(RT1 _) = makeRtypeN (parseArgsN 1) i
 
-makeRtypeN :: (TokenParsing m, Monad m) => Int -> RText -> m RInstr
-makeRtypeN n i =
-    rtypeParse i >> parseRegsN n >>= (return . regsToRInstr i . fromList)
+makeRtypeN :: (TokenParsing m, Monad m) => m ((), [Reg]) -> RText -> m RInstr
+makeRtypeN parse i = do
+    void $ parseDataAsShow i
+    (_, rs) <- parse
+    let maybInstr = regsToRInstr i $ rs
+    case maybInstr of
+      Just x  -> return x
+      Nothing -> undefined
 
--- [1, 2, 3] => f $ 1 $ 2 $ 3
-type PAPFunc f a result = Either (f, [a]) result
+regsToRInstr :: RText -> [Reg] -> Maybe RInstr
+regsToRInstr (RT3 i) [r1, r2, r3] = Just $
+    RI3 i r1 r2 r3
+regsToRInstr (RT2 i) [r1, r2] = Just $
+    RI2 i r1 r2
+regsToRInstr (RT1 i) [r] = Just $
+    RI1 i r
+regsToRInstr _ _ = Nothing
 
-liftPartial f xs = Left (f,xs)
-
-apply (Left (f,xs)) ys = Left (f,xs++ys)
-apply p _              = p
-
---simp2 :: PAPFunc (a->a->b) a b -> PAPFunc (a->a->b) a b
-simp2 :: PAPFunc (a -> a -> b) a b -> PAPFunc (a -> a -> b) a b
-simp2 (Left (f,(x1:x2:xs))) = Right (f x1 x2)
-simp2 p                     = p
-
-unsafeUnwrap :: PAPFunc (a -> a -> b) a b -> b
-unsafeUnwrap = fromRight'
-
-regsToRInstr :: RText -> NonEmpty Reg -> RInstr
-regsToRInstr (RT3 i) (r:|rs) =
-    unsafeUnwrap . simp2 $ liftPartial (RI3 i r) rs
-regsToRInstr (RT2 i) (r:|rs) =
-    unsafeUnwrap . simp2 $ liftPartial (RI2 i) (r:rs)
-regsToRInstr (RT1 i) (r:|[]) =
-    unsafeUnwrap . simp2 $ liftPartial (const $ RI1 i) [r, undefined]
-
-parseRegsN :: (TokenParsing m, Monad m) => Int -> m [Reg]
-parseRegsN n =
-    foldl cons' (return []) (replicate n register)
-  where
-      cons' bs b = do
-          bs' <- bs
-          b' <- b
-          return (b':bs')
+parseArgsN :: (TokenParsing m, Monad m) => Int -> m ((), [Reg])
+parseArgsN n =
+    sequence ((), count n register)

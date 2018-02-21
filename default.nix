@@ -24,7 +24,7 @@ in mkDerivation {
   src = ./.;
   isLibrary = true;
   isExecutable = true;
-  libraryHaskellDepends = [ base extra padelude trifecta parsers text ];
+  libraryHaskellDepends = [ base extra mtl padelude trifecta parsers text ];
   executableHaskellDepends = [ base padelude trifecta text ];
   executableSystemDepends = [];
   homepage = "https://github.com/qfjp/template";
