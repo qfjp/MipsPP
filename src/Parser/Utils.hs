@@ -8,7 +8,7 @@ import           Data.Text               (cons, pack, unpack)
 
 import           Text.Parser.Char        (CharParsing, char, newline, satisfy)
 import           Text.Parser.Combinators (choice, eof, skipSome, try, (<?>))
-import           Text.Parser.Token       (TokenParsing, hexadecimal, integer)
+import           Text.Parser.Token       (TokenParsing, hexadecimal, integer')
 
 data Imm = ILabel Text | IConst Integer
   deriving (Show, Eq, Ord)
@@ -44,23 +44,20 @@ label = do
         | otherwise = isLeadChar c
 
 number :: (TokenParsing m, Monad m) => m Integer
-number = choice . map (try $) $
-    [integer, char '0' >> hexadecimal]
+number = choice $
+    [integer', char '0' >> hexadecimal]
 
 immediate :: (TokenParsing m, Monad m) => m Imm
-immediate = plusWhiteSpaceNoEnd $ choice . map (try $) $
+immediate = choice $
     [ number >>= return . IConst
     , label  >>= return . ILabel
     ]
 
+endls :: [Char]
+endls = ['\v', '\r', '\f', '\n']
+
 isSpaceNoEndl :: Char -> Bool
-isSpaceNoEndl = do
-    c1 <- isSpace
-    c2 <- (/= '\v')
-    c3 <- (/= '\r')
-    c4 <- (/= '\f')
-    c5 <- (/= '\n')
-    return (c1 && c2 && c3 && c4 && c5)
+isSpaceNoEndl c = isSpace c && (not (c `elem` endls))
 
 -- foldr :: (f a -> f (t -> t) -> f (t-> t)) -> b -> t a -> b
 

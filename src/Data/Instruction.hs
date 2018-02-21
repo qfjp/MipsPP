@@ -20,8 +20,6 @@ data Instr =
   | Syscall
   deriving (Show, Eq, Ord)
 
-type Comment = Text
-
 instruction :: (TokenParsing m, Monad m) => m Instr
 instruction = do
     result <- choice
