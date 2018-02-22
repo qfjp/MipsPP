@@ -43,7 +43,7 @@ data Line = Instruction Instr
 
 instance PPrint Line where
     pprint (Instruction x)    = pprint x
-    pprint (Comment x)        = "# " ++ x
+    pprint (Comment x)        = "#" ++ x
     pprint (InstrComment x y) = pprint x ++ "  # " ++ y
     pprint (Label x)          = x ++ ":"
     pprint (Directive x)      = "." ++ x
