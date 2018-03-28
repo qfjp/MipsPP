@@ -1,4 +1,6 @@
 let
   pkgs = import <nixpkgs> {  };
 in
-  pkgs.haskellPackages.callPackage ./default.nix {}
+  {
+    mipp = pkgs.haskellPackages.callPackage ./default.nix {};
+  }
