@@ -13,7 +13,7 @@ import           Data.Text               (pack)
 
 import           Text.Parser.Char        (char, newline, noneOf)
 import           Text.Parser.Combinators (choice, eof, option, optional, try)
-import           Text.Parser.Token       (TokenParsing, symbolic)
+import           Text.Parser.Token       (TokenParsing)
 
 import           Data.Instruction
 import           Parser.Utils
@@ -43,7 +43,7 @@ data Line = Instruction Instr
 
 instance PPrint Line where
     pprint (Instruction x)    = pprint x
-    pprint (Comment x)        = "# " ++ x
+    pprint (Comment x)        = "#" ++ x
     pprint (InstrComment x y) = pprint x ++ "  # " ++ y
     pprint (Label x)          = x ++ ":"
     pprint (Directive x)      = "." ++ x
@@ -110,6 +110,6 @@ directive = plusWhiteSpaceNoEnd $ do
 
 comment :: (TokenParsing m, Monad m) => m Text
 comment = do
-    void $ symbolic '#'
+    void $ char '#'
     str <- many $ noneOf endls
     return . pack $ str
